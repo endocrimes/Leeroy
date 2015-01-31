@@ -28,19 +28,33 @@ function die_on_error()
 	printf "Completed operation: %s\n" "$errmsg";
 }
 
+function confirm()
+{
+	read -r -p "${1:-Are you sure? [y/N]} " response
+	case $response in
+		[yY][eE][sS]|[yY]) 
+			true
+			;;
+		*)
+			false
+		;;
+	esac
+}
+
+
 function main()
 {
 	DEBUG=${1:-''}
 	
 	# Command Line Tools
-	${DEBUG} xcode-select --install;
-	die_on_error $? "Xcode installation"
+	${DEBUG} sudo xcodebuild -license
+	die_on_error $? "xcodebuild license"
 	
 	# Enable Developer Mode
-	${DEBUG} /usr/sbin/DevToolsSecurity -enable
+	${DEBUG} sudo /usr/sbin/DevToolsSecurity -enable
 	die_on_error $? "Enabling dev tools security"
 
-	${DEBUG} /usr/sbin/dseditgroup -o edit -t group -a staff _developer
+	${DEBUG} sudo /usr/sbin/dseditgroup -o edit -t group -a staff _developer
 	die_on_error $? "Add _developer to staff"
 
 	# Homebrew
@@ -53,7 +67,7 @@ function main()
 	}
 
 	function install_gem() {
-		${DEBUG} gem install $1
+		${DEBUG} sudo gem install $1
 		die_on_error $? "${1} installation"
 	}
 
@@ -65,7 +79,7 @@ function main()
 	install_brew jenkins
 
 	# Gems
-	${DEBUG} gem update --system
+	${DEBUG} sudo gem update --system
 	install_gem cocoapods
 	install_gem xcpretty
 	install_gem shenzhen
@@ -82,7 +96,7 @@ function main()
 	${DEBUG} chmod 600 /usr/local/opt/jenkins/*.plist
 	die_on_error $? "Set correct permissions on Jenkins LaunchAgents"
 
-	${DEBUG} chown root /usr/local/opt/jenkins/*.plist
+	${DEBUG} sudo chown root /usr/local/opt/jenkins/*.plist
 	die_on_error $? "Change Jenkins LaunchAgents ownership to root"
 
 	# Start Jenkins
@@ -113,7 +127,20 @@ function main()
 	
 	${DEBUG} java -jar jenkins-cli.jar -s http://localhost:8080/ restart
 	die_on_error $? "Restart Jenkins"
+
+	${DEBUG} sleep 20
+
+	echo "------------------------"
+	echo "Jenkins is now set up"
 }
 
-main $@
+echo "---------------------------- Starting Setup ----------------------------"
+echo "Please ensure that Xcode and the Command Line Tools are installed before"
+echo "continuing."
+echo "Command line tools can be installed with xcode-select --install."
+echo "Xcode can be installed from the Mac App Store"
+echo "------------------------------------------------------------------------"
+
+
+confirm && main $@
 
