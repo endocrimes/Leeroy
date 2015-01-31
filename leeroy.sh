@@ -112,6 +112,7 @@ function main()
 	install_plugin build-flow-plugin	
 	
 	${DEBUG} java -jar jenkins-cli.jar -s http://localhost:8080/ restart
+	die_on_error $? "Restart Jenkins"
 }
 
 main $@
