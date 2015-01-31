@@ -138,7 +138,7 @@ function main()
 
 	function install_plugin()
 	{
-		${DEBUG} java -jar jenkins-cli.jar -s http://localhost:8080/ install-plugin https://updates.jenkins-ci.org/latest/$1.hpi
+		${DEBUG} java -jar jenkins-cli.jar -s http://localhost:8080/ install-plugin $1
 		die_on_error $? "$1 installation"
 	}
 
