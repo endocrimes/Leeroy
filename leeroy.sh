@@ -45,69 +45,96 @@ function confirm()
 function main()
 {
 	DEBUG=${1:-''}
+
+	function devtools_setup() 
+	{
+		# Command Line Tools
+		${DEBUG} sudo xcodebuild -license
+		die_on_error $? "xcodebuild license"
 	
-	# Command Line Tools
-	${DEBUG} sudo xcodebuild -license
-	die_on_error $? "xcodebuild license"
-	
-	# Enable Developer Mode
-	${DEBUG} sudo /usr/sbin/DevToolsSecurity -enable
-	die_on_error $? "Enabling dev tools security"
+		# Enable Developer Mode
+		${DEBUG} sudo /usr/sbin/DevToolsSecurity -enable
+		die_on_error $? "Enabling dev tools security"
 
-	${DEBUG} sudo /usr/sbin/dseditgroup -o edit -t group -a staff _developer
-	die_on_error $? "Add _developer to staff"
+		${DEBUG} sudo /usr/sbin/dseditgroup -o edit -t group -a staff _developer
+		die_on_error $? "Add _developer to staff"
+	}
 
-	# Homebrew
-	${DEBUG} ruby -e "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/master/install)"
-	die_on_error $? "Homebrew installation"
+	function install_homebrew()
+	{
+		# Homebrew
+		${DEBUG} ruby -e "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/master/install)"
+		die_on_error $? "Homebrew installation"
+	}
 
-	function install_brew() {
+	function install_brew() 
+	{
 		${DEBUG} brew install $1
 		die_on_error $? "${1} installation"
 	}
 
-	function install_gem() {
+	function install_gem()
+	{
 		${DEBUG} sudo gem install $1
 		die_on_error $? "${1} installation"
 	}
 
 	# Brews
-	install_brew git
-	install_brew wget
-	install_brew xctool
-	install_brew Caskroom/cask/java
-	install_brew jenkins
+	function install_brews()
+	{
+		install_brew git
+		install_brew wget
+		install_brew xctool
+		install_brew Caskroom/cask/java
+		install_brew jenkins
+	}
 
 	# Gems
-	${DEBUG} sudo gem update --system
-	install_gem cocoapods
-	install_gem xcpretty
-	install_gem shenzhen
+	function update_rubygems()
+	{
+		${DEBUG} sudo gem update --system
+	}
+
+	function install_gems()
+	{
+		install_gem cocoapods
+		install_gem xcpretty
+		install_gem shenzhen
+	}
 	
-	# Setup Cocoapods
-	${DEBUG} pod setup
-	die_on_error $? "Setup cocoapods"
+	function setup_cocoapods()
+	{
+		# Setup Cocoapods
+		${DEBUG} pod setup
+		die_on_error $? "Setup cocoapods"
+	}
 	
-	# Jenkins Configuration
-	${DEBUG} mkdir -p ~/Library/LaunchAgents
-	${DEBUG} ln -sfv /usr/local/opt/jenkins/*.plist ~/Library/LaunchAgents
-	die_on_error $? "Symlink Jenkins LaunchAgents"
+	function jenkins_setup()
+	{
+		# Jenkins Configuration
+		${DEBUG} mkdir -p ~/Library/LaunchAgents
+		${DEBUG} ln -sfv /usr/local/opt/jenkins/*.plist ~/Library/LaunchAgents
+		die_on_error $? "Symlink Jenkins LaunchAgents"
 
-	${DEBUG} chmod 600 /usr/local/opt/jenkins/*.plist
-	die_on_error $? "Set correct permissions on Jenkins LaunchAgents"
+		${DEBUG} chmod 600 /usr/local/opt/jenkins/*.plist
+		die_on_error $? "Set correct permissions on Jenkins LaunchAgents"
 
-	${DEBUG} sudo chown root /usr/local/opt/jenkins/*.plist
-	die_on_error $? "Change Jenkins LaunchAgents ownership to root"
+		${DEBUG} sudo chown root /usr/local/opt/jenkins/*.plist
+		die_on_error $? "Change Jenkins LaunchAgents ownership to root"
 
-	# Start Jenkins
-	${DEBUG} launchctl load ~/Library/LaunchAgents/homebrew.mxcl.jenkins.plist
-	die_on_error $? "Start Jenkins"
+		# Start Jenkins
+		${DEBUG} launchctl load ~/Library/LaunchAgents/homebrew.mxcl.jenkins.plist
+		die_on_error $? "Start Jenkins"
 
-	# Wait for Jenkins to start
-	${DEBUG} sleep 20
-
-	${DEBUG} curl -L -O http://localhost:8080/jnlpJars/jenkins-cli.jar
-	die_on_error $? "Download Jenkins CLI"
+		# Wait for Jenkins to start
+		${DEBUG} sleep 20
+	}
+	
+	function download_cli()
+	{
+		${DEBUG} curl -L -O http://localhost:8080/jnlpJars/jenkins-cli.jar
+		die_on_error $? "Download Jenkins CLI"
+	}
 
 	function install_plugin()
 	{
@@ -115,23 +142,42 @@ function main()
 		die_on_error $? "$1 installation"
 	}
 
-	install_plugin xcode-plugin
-	install_plugin github-oauth
-	install_plugin build-timeout
-	install_plugin mailer
-	install_plugin git
-	install_plugin cobertura
-	install_plugin s3
-	install_plugin ghprb
-	install_plugin build-flow-plugin	
+	function install_plugins()
+	{
+		install_plugin xcode-plugin
+		install_plugin github-oauth
+		install_plugin build-timeout
+		install_plugin mailer
+		install_plugin git
+		install_plugin cobertura
+		install_plugin s3
+		install_plugin ghprb
+		install_plugin build-flow-plugin	
+	}
 	
-	${DEBUG} java -jar jenkins-cli.jar -s http://localhost:8080/ restart
-	die_on_error $? "Restart Jenkins"
-
-	${DEBUG} sleep 20
-
-	echo "------------------------"
-	echo "Jenkins is now set up"
+	function restart_jenkins()
+	{
+		${DEBUG} java -jar jenkins-cli.jar -s http://localhost:8080/ restart
+		die_on_error $? "Restart Jenkins"
+		${DEBUG} sleep 20
+	}
+	
+	confirm "Accept Xcode Terms and Conditions and enable developer mode? [Y/n]" && devtools_setup
+	confirm "Install Hombrew? [Y/n]" && install_homebrew
+	echo "Installing Brews"
+	install_brews
+	echo "Updating Rubygems"
+	update_rubygems
+	echo "Installing Gems"
+	install_gems
+	confirm "Setup cocoapods? [Y/n]" && setup_cocoapods
+	echo "Setting up jenkins"
+	jenkins_setup
+	echo "Downloading jenkins-cli"
+	download_cli
+	echo "Installing plugins"
+	install_plugins
+	restart_jenkins
 }
 
 echo "---------------------------- Starting Setup ----------------------------"
